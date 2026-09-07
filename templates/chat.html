@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            padding-top: 50px;
+        }
+
+        .chat-container {
+            width: 500px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #ccc;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        #chatBox {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .user {
+            text-align: right;
+            margin: 10px;
+        }
+
+        .ai {
+            text-align: left;
+            margin: 10px;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="chat-container">
+
+    <h2>AI Chatbot</h2>
+
+    <div id="chatBox">
+        <div class="ai">
+            <strong>AI:</strong> Hello! How can I help you?
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input
+            type="text"
+            id="messageInput"
+            placeholder="Type your message..."
+        >
+
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+</div>
+
+<script>
+    let conversationId = null;
+
+    async function sendMessage() {
+        const input = document.getElementById("messageInput");
+        const chatBox = document.getElementById("chatBox");
+
+        const message = input.value.trim();
+
+        if (message === "") {
+            return;
+        }
+
+        // Show user message
+        chatBox.innerHTML += `
+            <div class="user">
+                <strong>You:</strong> ${message}
+            </div>
+        `;
+
+        input.value = "";
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // JWT token
+        const token = localStorage.getItem("access_token");
+
+        if (!token) {
+            chatBox.innerHTML += `
+                <div class="ai">
+                    <strong>Error:</strong> Please login first.
+                </div>
+            `;
+            return;
+        }
+
+        try {
+            const response = await fetch("/chat", {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+
+                body: JSON.stringify({
+                    message: message,
+                    conversation_id: conversationId
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                chatBox.innerHTML += `
+                    <div class="ai">
+                        <strong>Error:</strong> ${data.detail || "Something went wrong"}
+                    </div>
+                `;
+                return;
+            }
+
+            // Save conversation ID for multi-turn chat
+            conversationId = data.conversation_id;
+
+            // Display Groq response
+            chatBox.innerHTML += `
+                <div class="ai">
+                    <strong>AI:</strong> ${data.ai_response}
+                </div>
+            `;
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+        } catch (error) {
+
+            chatBox.innerHTML += `
+                <div class="ai">
+                    <strong>Error:</strong> Could not connect to server.
+                </div>
+            `;
+
+            console.error(error);
+        }
+    }
+
+
+    // Send message by pressing Enter
+    document
+        .getElementById("messageInput")
+        .addEventListener("keydown", function(event) {
+
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+
+        });
+</script>
+</body>
+</html>
